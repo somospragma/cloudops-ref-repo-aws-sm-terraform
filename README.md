@@ -1,20 +1,122 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+# **🚀 Módulo Terraform para Secret manager: cloudops-ref-repo-aws-sm-terraform**
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+## Descripción:
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+Este módulo de Terraform permite la creación y configuración de Secrets en AWS Secrets Manager. Incluye la definición de secretos, su versión, y la aplicación de políticas, permitiendo además la replicación de secretos en otras regiones si es necesario, el cual requiere de los siguientes recursos, los cuales debieron ser previamente creados:
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+- kms_key_id: Para el KMS del secreto.
+
+Consulta CHANGELOG.md para la lista de cambios de cada versión. *Recomendamos encarecidamente que en tu código fijes la versión exacta que estás utilizando para que tu infraestructura permanezca estable y actualices las versiones de manera sistemática para evitar sorpresas.*
+
+## Estructura del Módulo
+
+El módulo cuenta con la siguiente estructura:
+
+```bash
+cloudops-ref-repo-aws-sm-terraform/
+└── sample/
+    ├── data.tf
+    ├── main.tf
+    ├── outputs.tf
+    ├── providers.tf
+    ├── terraform.auto.tfvars
+    └── variables.tf
+├── CHANGELOG.md
+├── README.md
+├── data.tf
+├── main.tf
+├── outputs.tf
+├── variables.tf
+```
+
+- Los archivos principales del módulo (`data.tf`, `main.tf`, `outputs.tf`, `variables.tf`) se encuentran en el directorio raíz.
+- `CHANGELOG.md` y `README.md` también están en el directorio raíz para fácil acceso.
+- La carpeta `sample/` contiene un ejemplo de implementación del módulo.
+
+
+## Uso del Módulo:
+
+```hcl
+module "secrets" {
+  source = "./module/secrets"
+
+  client      = "xxxx"
+  environment = "xxxx"
+  service     = "xxxx"
+
+  secrets_config = [
+    {
+      description                     = "xxxx"
+      application                     = "xxxx"
+      kms_key_id                      = "xxxx" (llamarlo desde el modulo de kms de ser necesario)
+      recovery_window_in_days         = "xxxx"
+      force_overwrite_replica_secret  = "xxxx"
+      replica                         = [
+        {
+          region     = "xxxx"
+          kms_key_id = "xxxx"
+        }
+      ]
+      secret_json                     = { username = "admin", password = "SuperSecret" }
+      secret_text                     = "xxxx"
+    }
+  ]
+
+  secret_policies = {
+    "mi_aplicacion" = jsonencode({
+      Version   = "2012-10-17"
+      Statement = [
+        {
+          Effect    = "Allow"
+          Principal = { AWS = "xxxx" }
+          Action    = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+          Resource  = "*"
+        }
+      ]
+    })
+  }
+}
+```
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 0.13.1 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 4.31.0 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_aws.project"></a> [aws.project](#provider\_aws) | >= 4.31.0 |
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [aws_secretsmanager_secret.secret](https://registry.terraform.io/providers/hashicorp/aws/3.28.0/docs/resources/secretsmanager_secret) | resource |
+| [aws_api_gateway_resource.secret](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
+| [aws_secretsmanager_secret_policy.policy](https://registry.terraform.io/providers/hashicorp/aws/3.28.0/docs/resources/secretsmanager_secret_policy) | resource |
+
+
+
+## 📌 Variables
+
+| Nombre                               | Tipo                                                                                                                           | Descripción                                               | Predeterminado | Obligatorio |
+|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|----------------|-------------|
+| `client`                            | `string`                                                                                                                       | Identificador del cliente.                                |                | Sí          |
+| `environment`                       | `string`                                                                                                                       | Entorno de despliegue (por ejemplo, `dev`, `staging`, `prod`). |                | Sí          |
+| `service`                           | `string`                                                                                                                       | Nombre del servicio o aplicación que utilizará el secreto. |                | Sí          |
+| `secrets_config`                    | `list(object({<br>&nbsp;&nbsp;description = string,<br>&nbsp;&nbsp;application = string,<br>&nbsp;&nbsp;kms_key_id = string,<br>&nbsp;&nbsp;recovery_window_in_days = string,<br>&nbsp;&nbsp;force_overwrite_replica_secret = string,<br>&nbsp;&nbsp;replica = list(object({<br>&nbsp;&nbsp;&nbsp;&nbsp;region = string,<br>&nbsp;&nbsp;&nbsp;&nbsp;kms_key_id = string<br>&nbsp;&nbsp;})),<br>&nbsp;&nbsp;secret_json = map(string),<br>&nbsp;&nbsp;secret_text = string<br>}))` | Lista de configuraciones para cada secreto en Secrets Manager. Cada objeto permite definir la descripción, cifrado, replicación y el contenido del secreto (en formato JSON o texto). |                | Sí          |
+| `secret_policies`                   | `map(any)`                                                                                                                     | Mapa de políticas dinámicas para los secretos. Permite asignar una política personalizada a cada secreto basado en su `application`. |                | Sí          |
+
+
+### 📤 Outputs
+| Nombre         | Descripción                                         |
+|----------------|-----------------------------------------------------|
+| `secret_arns`  | Mapa que relaciona cada aplicación con su ARN correspondiente en Secrets Manager. |
+
+
+
+
