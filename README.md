@@ -108,9 +108,31 @@ module "secrets" {
 | `client`                            | `string`                                                                                                                       | Identificador del cliente.                                |                | Sí          |
 | `environment`                       | `string`                                                                                                                       | Entorno de despliegue (por ejemplo, `dev`, `staging`, `prod`). |                | Sí          |
 | `service`                           | `string`                                                                                                                       | Nombre del servicio o aplicación que utilizará el secreto. |                | Sí          |
-| `secrets_config`                    | `list(object({<br>&nbsp;&nbsp;description = string,<br>&nbsp;&nbsp;application = string,<br>&nbsp;&nbsp;kms_key_id = string,<br>&nbsp;&nbsp;recovery_window_in_days = string,<br>&nbsp;&nbsp;force_overwrite_replica_secret = string,<br>&nbsp;&nbsp;replica = list(object({<br>&nbsp;&nbsp;&nbsp;&nbsp;region = string,<br>&nbsp;&nbsp;&nbsp;&nbsp;kms_key_id = string<br>&nbsp;&nbsp;})),<br>&nbsp;&nbsp;secret_json = map(string),<br>&nbsp;&nbsp;secret_text = string<br>}))` | Lista de configuraciones para cada secreto en Secrets Manager. Cada objeto permite definir la descripción, cifrado, replicación y el contenido del secreto (en formato JSON o texto). |                | Sí          |
 | `secret_policies`                   | `map(any)`                                                                                                                     | Mapa de políticas dinámicas para los secretos. Permite asignar una política personalizada a cada secreto basado en su `application`. |                | Sí          |
 
+### `secrets_config`
+
+**Tipo:** `list(object)`
+
+**Descripción:** Lista de configuraciones para cada secreto en Secrets Manager. Cada objeto permite definir la descripción, cifrado, replicación y el contenido del secreto.
+
+**Estructura del objeto:**
+
+```hcl
+object({
+  description                    = string
+  application                    = string
+  kms_key_id                     = string
+  recovery_window_in_days        = string
+  force_overwrite_replica_secret = string
+  replica = list(object({
+    region     = string
+    kms_key_id = string
+  }))
+  secret_json = map(string)
+  secret_text = string
+})
+```
 
 ### 📤 Outputs
 | Nombre         | Descripción                                         |
