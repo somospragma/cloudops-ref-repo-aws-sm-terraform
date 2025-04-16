@@ -1,68 +1,65 @@
+locals {
+  # Generar nombres estandarizados para los secretos
+  secret_names = {
+    for k, v in var.secrets_config : k => "${var.client}/${var.project}/${var.environment}/secret/${k}"
+  }
+}
+
+# Recurso de Secret Manager - Solo el cascarón
 resource "aws_secretsmanager_secret" "secret" {
-  for_each = { for item in var.secrets_config :
-    item.application => {
-      "index" : index(var.secrets_config, item)
-      "description" : item.description
-      "kms_key_id" : item.kms_key_id
-      "recovery_window_in_days" : item.recovery_window_in_days
-      "force_overwrite_replica_secret" : item.force_overwrite_replica_secret
-      "replica" : item.replica
-    }
-  }
+  provider = aws.project
+  for_each = var.secrets_config
 
-  name        = each.key
-  description = each.value["description"]
+  name        = local.secret_names[each.key]
+  description = each.value.description
 
-  kms_key_id                     = each.value["kms_key_id"]
-  recovery_window_in_days        = each.value["recovery_window_in_days"]
-  force_overwrite_replica_secret = each.value["force_overwrite_replica_secret"]
+  # KMS key es obligatorio para garantizar el cifrado
+  kms_key_id                     = each.value.kms_key_id
+  recovery_window_in_days        = each.value.recovery_window_in_days
+  force_overwrite_replica_secret = each.value.force_overwrite_replica_secret
 
+  # Configuración de replicación entre regiones
   dynamic "replica" {
-    for_each = each.value["replica"]
+    for_each = each.value.replica
     content {
-    region     = replica.value["region"]
-    kms_key_id = replica.value["region"]
-  }
-  }
- 
-
-  tags = merge({ Name = "${each.key}" })
-}
-
-
-resource "aws_secretsmanager_secret_version" "secret" {
-  for_each = { for item in var.secrets_config :
-    item.application => {
-      "index" : index(var.secrets_config, item)
-      "secret_json" : item.secret_json
-      "secret_text" : item.secret_text
+      region     = replica.value.region
+      kms_key_id = replica.value.kms_key_id
     }
   }
-  secret_id     = aws_secretsmanager_secret.secret[each.key].id
-  secret_string = each.value["secret_json"] != null ? jsonencode(each.value["secret_json"]) : each.value["secret_text"] //todo: check
+
+  # Etiquetas - Solo Name y etiquetas adicionales específicas para este recurso
+  tags = merge(
+    {
+      Name = local.secret_names[each.key]
+    },
+    each.value.additional_tags
+  )
 }
 
+# Versión del secreto - OPCIONAL
+# Solo se crea si se proporciona secret_json o secret_text Y create_secret_version = true
+resource "aws_secretsmanager_secret_version" "secret" {
+  provider = aws.project
+  for_each = {
+    for k, v in var.secrets_config : k => v 
+    if(v.create_secret_version && (v.secret_json != null || v.secret_text != null))
+  }
+
+  secret_id = aws_secretsmanager_secret.secret[each.key].id
+  
+  # Usar secret_json si está definido, de lo contrario usar secret_text
+  secret_string = each.value.secret_json != null ? jsonencode(each.value.secret_json) : each.value.secret_text
+}
+
+# Política de acceso al secreto - OPCIONAL
+# Solo se crea si se proporciona una política en el campo policy
 resource "aws_secretsmanager_secret_policy" "policy" {
-  for_each   = aws_secretsmanager_secret.secret
-  secret_arn = each.value.arn
-  policy = lookup(
-    var.secret_policies,
-    each.key,
-    jsonencode({
-      Version = "2012-10-17"
-      Statement = [
-        {
-          Effect    = "Allow"
-          Principal = {
-            AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-          }
-          Action    = [
-            "secretsmanager:GetSecretValue",
-            "secretsmanager:DescribeSecret"
-          ]
-          Resource  = each.value.arn
-        }
-      ]
-    })
-  )
+  provider = aws.project
+  for_each = {
+    for k, v in var.secrets_config : k => v
+    if v.policy != null
+  }
+
+  secret_arn = aws_secretsmanager_secret.secret[each.key].arn
+  policy     = each.value.policy
 }

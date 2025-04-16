@@ -1,0 +1,128 @@
+###########################################
+########## Common variables ###############
+###########################################
+
+profile     = "profile"
+aws_region  = "us-east-1"
+environment = "dev"
+client      = "pragma"
+project     = "test"
+service     = "secret"  
+
+common_tags = {
+  environment     = "dev"
+  project-name    = "Modulos Referencia"
+  cost-center     = "-"
+  owner           = "pepito@pragma.com.co"
+  area            = "test"
+  provisioned     = "terraform"
+  datatype        = "interno"
+}
+
+additional_tags = {
+  backup-policy = "none"
+  service-tier  = "standard"
+}
+
+###########################################
+########## Secrets Manager variables ###############
+###########################################
+
+secrets_config = {
+  # Secreto básico sin replicación
+  "usuarios" = {
+    description                    = "Secreto para la aplicación usuarios"
+    kms_key_id                     = "alias/aws/secretsmanager"  # Usando la clave predeterminada de AWS
+    recovery_window_in_days        = 7
+    force_overwrite_replica_secret = true
+    replica                        = []
+    # No creamos la versión del secreto desde Terraform
+    create_secret_version          = false
+    # Política como string en formato JSON
+    policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::1234567890:root"
+      },
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+    additional_tags = {
+      application = "usuarios"
+      data-classification = "confidential"
+    }
+  },
+  
+  # Secreto con replicación en múltiples regiones
+  "multi-region-secret" = {
+    description                    = "Secreto replicado en múltiples regiones"
+    kms_key_id                     = "alias/aws/secretsmanager"  # KMS key en la región principal
+    recovery_window_in_days        = 7
+    force_overwrite_replica_secret = true
+    
+    # Configuración de replicación
+    replica = [
+      {
+        region     = "us-east-2"
+        kms_key_id = "alias/aws/secretsmanager"  # KMS key en la región secundaria
+      },
+    ]
+    
+    # No creamos la versión del secreto desde Terraform
+    create_secret_version          = false
+    
+    # Política como string en formato JSON
+    policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::1234567890:root"
+      },
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+    
+    additional_tags = {
+      application = "global-app"
+      data-classification = "confidential"
+      replication = "multi-region"
+    }
+  },
+  
+  # Secreto con versión (solo para desarrollo/pruebas)
+  "test-secret" = {
+    description                    = "Secreto de prueba (solo para desarrollo)"
+    kms_key_id                     = "alias/aws/secretsmanager"
+    recovery_window_in_days        = 7
+    force_overwrite_replica_secret = true
+    replica                        = []
+    # Creamos la versión del secreto desde Terraform (solo para desarrollo)
+    create_secret_version          = true
+    secret_json = {
+      test_key = "test_value"
+    }
+    additional_tags = {
+      application = "testing"
+      data-classification = "internal"
+    }
+  }
+}
