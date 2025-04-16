@@ -25,7 +25,6 @@ sample/
 
 1. **Preparar las variables**:
    - Copie el archivo `terraform.auto.tfvars.sample` a `terraform.auto.tfvars`
-   - Revise y modifique el archivo `terraform.auto.tfvars` según sus necesidades
    - Asegúrese de actualizar los valores de `profile`, `aws_region`, `client`, `project`, `environment` y `common_tags`
 
 2. **Inicializar Terraform**:
