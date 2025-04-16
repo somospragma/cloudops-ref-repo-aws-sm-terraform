@@ -11,7 +11,7 @@ sample/
 ├── outputs.tf           # Outputs del ejemplo
 ├── providers.tf         # Configuración del proveedor AWS
 ├── README.md            # Este archivo
-├── terraform.auto.tfvars # Variables de ejemplo (renombrar a terraform.auto.tfvars para usar)
+├── terraform.auto.tfvars.sample # Variables de ejemplo (renombrar a terraform.auto.tfvars para usar)
 └── variables.tf         # Definición de variables
 ```
 
@@ -24,6 +24,7 @@ sample/
 ## Cómo usar este ejemplo
 
 1. **Preparar las variables**:
+   - Copie el archivo `terraform.auto.tfvars.sample` a `terraform.auto.tfvars`
    - Revise y modifique el archivo `terraform.auto.tfvars` según sus necesidades
    - Asegúrese de actualizar los valores de `profile`, `aws_region`, `client`, `project`, `environment` y `common_tags`
 
@@ -65,7 +66,7 @@ sample/
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::840021737375:root"
+        "AWS": "arn:aws:iam::1234567890:root"
       },
       "Action": [
         "secretsmanager:GetSecretValue",
@@ -95,11 +96,7 @@ EOF
   # Configuración de replicación
   replica = [
     {
-      region     = "us-west-2"
-      kms_key_id = "alias/aws/secretsmanager"
-    },
-    {
-      region     = "eu-west-1"
+      region     = "us-east-2"
       kms_key_id = "alias/aws/secretsmanager"
     }
   ]
@@ -112,7 +109,7 @@ EOF
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::840021737375:root"
+        "AWS": "arn:aws:iam::1234567890:root"
       },
       "Action": [
         "secretsmanager:GetSecretValue",
@@ -170,12 +167,12 @@ Para los secretos creados con `create_secret_version = false`, deberá agregar e
 ```bash
 # Para secretos en formato JSON
 aws secretsmanager put-secret-value \
-    --secret-id "pragma-secret-dev-secret-usuarios" \
+    --secret-id "pragma/test/dev/secret/usuarios" \
     --secret-string '{"username":"admin","password":"SecurePassword123!"}'
 
 # Para secretos en formato texto
 aws secretsmanager put-secret-value \
-    --secret-id "pragma-secret-dev-secret-api-key" \
+    --secret-id "pragma/test/dev/secret/api-key" \
     --secret-string "api-key-value-here"
 ```
 
