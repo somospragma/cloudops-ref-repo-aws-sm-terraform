@@ -63,3 +63,25 @@ resource "aws_secretsmanager_secret_policy" "policy" {
   secret_arn = aws_secretsmanager_secret.secret[each.key].arn
   policy     = each.value.policy
 }
+
+# Rotación automática de secretos - OPCIONAL
+# Solo se crea si rotation_config está definido y enabled = true
+resource "aws_secretsmanager_secret_rotation" "rotation" {
+  provider = aws.project
+  for_each = {
+    for k, v in var.secrets_config : k => v
+    if v.rotation_config != null && v.rotation_config.enabled
+  }
+
+  secret_id           = aws_secretsmanager_secret.secret[each.key].id
+  rotation_lambda_arn = each.value.rotation_config.lambda_function_arn
+  
+  rotation_rules {
+    automatically_after_days = each.value.rotation_config.rotation_interval_days
+  }
+
+  # Rotar inmediatamente después de la creación si está habilitado
+  rotate_immediately = each.value.rotation_config.rotation_immediately
+
+  depends_on = [aws_secretsmanager_secret_version.secret]
+}

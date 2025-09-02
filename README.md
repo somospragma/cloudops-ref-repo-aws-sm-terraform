@@ -122,6 +122,23 @@ EOF
       }
     },
     
+    # Secreto con rotación automática
+    "rds-credentials" = {
+      description           = "Credenciales RDS con rotación automática"
+      kms_key_id            = "alias/aws/secretsmanager"
+      create_secret_version = false
+      rotation_config = {
+        enabled                = true
+        lambda_function_arn    = "arn:aws:lambda:us-east-1:123456789012:function:rds-rotation-lambda"
+        rotation_interval_days = 30
+        rotation_immediately   = false
+      }
+      additional_tags = {
+        application = "database"
+        rotation = "enabled"
+      }
+    },
+    
     # Secreto con replicación en múltiples regiones
     "multi-region-secret" = {
       description           = "Secreto replicado en múltiples regiones"
@@ -262,6 +279,13 @@ variable "secrets_config" {
     create_secret_version           = optional(bool, false)
     # Política del secreto (opcional)
     policy                          = optional(string)
+    # Configuración de rotación automática
+    rotation_config = optional(object({
+      enabled                = bool
+      lambda_function_arn    = string
+      rotation_interval_days = optional(number, 30)
+      rotation_immediately   = optional(bool, false)
+    }))
     # Etiquetas adicionales
     additional_tags                 = optional(map(string), {})
   }))
@@ -275,6 +299,7 @@ variable "secrets_config" {
 | <a name="secret_arns"></a> [secret_arns](#output\secret_arns) | ARNs de los secretos creados |
 | <a name="secret_names"></a> [secret_names](#output\secret_names) | Nombres de los secretos creados |
 | <a name="secret_versions"></a> [secret_versions](#output\secret_versions) | IDs de las versiones de los secretos creados (solo para secretos con versión) |
+| <a name="rotation_enabled_secrets"></a> [rotation_enabled_secrets](#output\rotation_enabled_secrets) | Secretos con rotación automática habilitada |
 
 ## Gestión de secretos después de la creación
 
@@ -337,21 +362,33 @@ replica = [
 - Las actualizaciones al secreto se propagan automáticamente a todas las réplicas
 - Las políticas de acceso se aplican a todas las réplicas
 
-## Rotación de secretos (Versión futura)
+## Rotación de secretos
 
-La rotación automática de secretos es una característica importante para la seguridad, pero requiere una función Lambda específica para cada tipo de secreto. En esta versión del módulo, la rotación automática no está implementada.
+El módulo ahora soporta rotación automática de secretos mediante funciones Lambda. Para habilitar la rotación:
 
-En una versión futura, se planea agregar soporte completo para la rotación automática de secretos, incluyendo:
+1. **Crear una función Lambda de rotación** (debe existir previamente)
+2. **Configurar la rotación** en el secreto:
 
-- Módulo complementario para crear funciones Lambda de rotación
-- Plantillas para diferentes tipos de secretos (bases de datos, APIs, etc.)
-- Integración con servicios de AWS como RDS, Redshift, etc.
+```hcl
+rotation_config = {
+  enabled                = true
+  lambda_function_arn    = "arn:aws:lambda:us-east-1:123456789012:function:my-rotation-lambda"
+  rotation_interval_days = 30
+  rotation_immediately   = false
+}
+```
 
-Si necesita implementar la rotación de secretos, considere:
+**Consideraciones importantes:**
 
-1. Crear una función Lambda personalizada para la rotación
-2. Configurar la rotación manualmente a través de la consola de AWS
-3. Utilizar un módulo separado para la rotación de secretos
+- La función Lambda debe tener permisos para acceder al secreto
+- La Lambda debe implementar la lógica específica para el tipo de secreto (RDS, API keys, etc.)
+- Se recomienda probar la rotación en un entorno de desarrollo primero
+- La rotación inmediata (`rotation_immediately = true`) ejecutará la rotación al crear/actualizar el secreto
+
+**Tipos de rotación comunes:**
+- **RDS/Aurora**: Usar las plantillas oficiales de AWS
+- **API Keys**: Implementar lógica personalizada
+- **Certificados**: Integrar con AWS Certificate Manager
 
 ## Consideraciones de seguridad
 

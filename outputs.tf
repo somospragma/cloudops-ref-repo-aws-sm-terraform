@@ -13,3 +13,8 @@ output "secret_versions" {
   value       = { for k, v in aws_secretsmanager_secret_version.secret : k => v.version_id }
   sensitive   = true
 }
+
+output "rotation_enabled_secrets" {
+  description = "Secretos con rotación automática habilitada"
+  value       = { for k, v in aws_secretsmanager_secret_rotation.rotation : k => v.rotation_enabled }
+}

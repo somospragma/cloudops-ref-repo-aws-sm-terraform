@@ -16,6 +16,13 @@ variable "secrets_config" {
     create_secret_version           = optional(bool, false)
     # Política del secreto (opcional)
     policy                          = optional(string)
+    # Configuración de rotación automática
+    rotation_config = optional(object({
+      enabled                = bool
+      lambda_function_arn    = string
+      rotation_interval_days = optional(number, 30)
+      rotation_immediately   = optional(bool, false)
+    }))
     # Etiquetas adicionales
     additional_tags                 = optional(map(string), {})
   }))
